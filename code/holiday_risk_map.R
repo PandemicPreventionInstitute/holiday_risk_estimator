@@ -28,6 +28,7 @@ cases_by_county_t <- read_csv(NYT_CASE_BY_COUNTY_DAY)
 county_pops<-read_csv(COUNTY_POPULATION_PATH)
 vax_rate_by_county_t<-read_csv(VAX_RATES_BY_COUNTY)
 
+# test
 
 # ----- Set parameters----------------------------------------------------
 DUR_INF<- 7 
