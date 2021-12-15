@@ -1,0 +1,84 @@
+---
+title: "mitigation_example"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(lintr)
+library(styler)
+library(tidyverse)
+library(readxl)
+library(lubridate)
+
+```
+Read in county risk file
+```{r}
+county_risk_long<-read.csv('../out/county_risk_long.csv')
+
+# function for risk
+calc_risk_inf_at_event <- function(p_I, n) {
+    r<-1-(1-p_I)**n
+    round(100 * r, 1)
+}
+```
+Make bar charts of mitigation
+```{r}
+# Select an example county
+example_county_risk<-county_risk_long%>%filter(county_state_formatted == "Union, New Jersey")
+#find_df$archetype_clean<-factor(find_df$archetype_clean, ordered = TRUE, stringr::str_wrap(c("Test", "Connect", "Leverage", "Strengthen")))
+example_county_risk$mitigation<-factor(example_county_risk$mitigation, ordered = TRUE, stringr::str_wrap(c(
+    "fully_vax_and_test", "testing_no_vax", "fully_vax_no_test", "no_mitig")))
+
+# Make dataframe for Flourish
+example_county_risk_wide<-example_county_risk%>%select(
+    event_size, mitigation, chance_someone_inf)%>%
+    pivot_wider(names_from = mitigation, values_from = chance_someone_inf)
+write.csv(example_county_risk_wide, '../out/example_bar_chart.csv')
+path = "../out/bar_chart.png"
+bar_chart<-ggplot(example_county_risk, aes(x = event_size, y = chance_someone_inf, fill = factor(mitigation))) + 
+    geom_bar(stat = "identity", position = "dodge")+
+    xlab('Event size')+
+    ylab('Probability someone arrives infected (%)')+
+    scale_fill_manual(values = c("green", "yellow", "orange", "red"), 
+                      labels = c("100% vax & rapid test", "Rapid test morning of",
+                      "100% vaccinated", "No mitigation"))+
+     guides(fill=guide_legend(title="Mitigation measure"))+
+ ggtitle('Union County risk example')
+bar_chart
+ggsave(filename = path, device = "png")
+
+# For this county, find the probability someone infected at event at each mitigation
+event_sizes<-seq(from = 1, to = 50, by = 1)
+prev = rep(example_county_risk$prev[1], length(event_sizes))
+m_v = rep(example_county_risk$m_v[1], length(event_sizes))
+m_test = rep(example_county_risk$m_test[1], length(event_sizes))
+df<-data.frame(event_sizes, prev)
+df<-df%>%mutate(
+     risk_inf_no_mitig = calc_risk_inf_at_event(prev, event_sizes),
+     risk_inf_testing_no_vax = calc_risk_inf_at_event(m_test*prev, event_sizes),
+     risk_inf_fully_vax_no_test = calc_risk_inf_at_event(m_v*prev, event_sizes),
+     risk_inf_fully_vax_and_test= calc_risk_inf_at_event(m_test*m_v*prev, event_sizes),
+)%>%pivot_longer(
+    cols = starts_with("risk_"),
+    names_to = "mitigation",
+    names_prefix = "risk_", 
+    values_to = "chance_someone_inf",
+    values_drop_na = TRUE
+)
+
+df$mitigation<-factor(df$mitigation, ordered = TRUE, stringr::str_wrap(c(
+    "inf_fully_vax_and_test", "inf_testing_no_vax", "inf_fully_vax_no_test", "inf_no_mitig")))
+path = "../out/line_plot.png"
+line_plot<-ggplot(df) + geom_line(aes(x = event_sizes, y = chance_someone_inf, color = mitigation ))+
+    xlab('Event size')+
+    ylab('Probability someone arrives infected (%)')+
+    scale_color_manual(values = c("green", "yellow", "orange", "red"), 
+                      labels = c("100% vax & rapid test", "Rapid test morning of",
+                      "100% vaccinated", "No mitigation"))+
+     guides(color=guide_legend(title="Mitigation measure"))+
+                ggtitle('Union County risk example')
+line_plot
+ggsave(filename = path, device = "png")
+```
+

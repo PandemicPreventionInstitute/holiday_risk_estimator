@@ -15,7 +15,7 @@ library(tidyverse)
 library(readxl)
 library(lubridate)
 
-lint("holiday_risk_map.R")
+#lint("holiday_risk_map.R")
 
 # file paths
 NYT_CASE_BY_COUNTY_DAY <- url("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties-recent.csv")
@@ -44,8 +44,7 @@ prop_vax_event<-1
 # ---- Risk functions ---------------------------------------------------
 calc_risk_inf_at_event <- function(p_I, n) {
     r<-1-(1-p_I)**n
-    #round(100 * r, 1)
-    return(r)
+    round(100 * r, 1)
 }
 
 # ------ Summarise daily data to county-level ---------------------------
@@ -82,7 +81,7 @@ county_risk<-county_cases%>%left_join(county_pops, by = "county_state_formatted"
            risk_inf_no_mitig_big = calc_risk_inf_at_event(prev, event_size[3]),
            risk_inf_testing_no_vax_big = calc_risk_inf_at_event((m_test*prev), event_size[3]),
            risk_inf_fully_vax_no_test_big = calc_risk_inf_at_event(m_v*prev, event_size[3]),
-           risk_inf_fully_vax_and_test_big = calc_risk_inf_at_event(m_test*m_v*prev, event_size[3]),
+           risk_inf_fully_vax_and_test_big = calc_risk_inf_at_event(m_test*m_v*prev, event_size[3])
            )%>%
     drop_na(county_fips)
 
@@ -96,55 +95,74 @@ county_risk<-left_join(shapefile, county_risk, by = c("FIPS" = "county_fips"))
 county_risk_long<-county_risk%>%pivot_longer(
     cols = starts_with("risk_"),
     names_to = "mitigation",
-    names_prefix = "risk_",
+    names_prefix = "risk_", 
     values_to = "chance_someone_inf",
     values_drop_na = TRUE
 )
 # add % to all risks
-county_risk_long$chance_someone_inf<-paste0(county_risk_long$chance_someone_inf, ' %')
+county_risk_long$pct_chance_someone_inf<-paste0(county_risk_long$chance_someone_inf, ' %')
 
 # Make 3 separate dataframes so column names can be the same
 county_risk_small<-county_risk_long[grep("small", county_risk_long$mitigation),]
+county_risk_small$event_size<-event_size[1]
 county_risk_small_clean<-county_risk_small%>%
-    pivot_wider(names_from = "mitigation", values_from = "chance_someone_inf")%>%
-    mutate(event_size = event_size[1])%>%rename(
-        `No mitigation` = inf_no_mitig_small,
-        `Rapid test morning of` = inf_testing_no_vax_small,
-        `100% vaccinated` = inf_fully_vax_no_test_small,
-        `100% vax & rapid test` = inf_fully_vax_and_test_small,
+    pivot_wider(names_from = "mitigation", values_from = c("pct_chance_someone_inf", "chance_someone_inf"))%>%
+    mutate(event_size = event_size[1])%>%
+    rename(
+        `No mitigation` = pct_chance_someone_inf_inf_no_mitig_small,
+        `Rapid test morning of` = pct_chance_someone_inf_inf_testing_no_vax_small,
+        `100% vaccinated` = pct_chance_someone_inf_inf_fully_vax_no_test_small,
+        `100% vax & rapid test` = pct_chance_someone_inf_inf_fully_vax_and_test_small,
         `7-day cases per 100k` = cases_last_7_days_per_100k
     )
 
 
 county_risk_med<-county_risk_long[grep("med", county_risk_long$mitigation),]
+county_risk_med$event_size <- event_size[2]
 county_risk_med_clean<-county_risk_med%>%
-    pivot_wider(names_from = "mitigation", values_from = "chance_someone_inf")%>%
-    mutate(event_size = event_size[2])%>%rename(
-        `No mitigation` = inf_no_mitig_med,
-        `Rapid test morning of` = inf_testing_no_vax_med,
-        `100% vaccinated` = inf_fully_vax_no_test_med,
-        `100% vax & rapid test` = inf_fully_vax_and_test_med,
+    pivot_wider(names_from = "mitigation", values_from = c("pct_chance_someone_inf", "chance_someone_inf"))%>%
+    rename(
+        `No mitigation` =pct_chance_someone_inf_inf_no_mitig_med,
+        `Rapid test morning of` = pct_chance_someone_inf_inf_testing_no_vax_med,
+        `100% vaccinated` = pct_chance_someone_inf_inf_fully_vax_no_test_med,
+        `100% vax & rapid test` = pct_chance_someone_inf_inf_fully_vax_and_test_med,
         `7-day cases per 100k` = cases_last_7_days_per_100k
     )
 
 
 county_risk_big<-county_risk_long[grep("big", county_risk_long$mitigation),]
+county_risk_big$event_size <- event_size[3]
 county_risk_big_clean<-county_risk_big%>%
-    pivot_wider(names_from = "mitigation", values_from = "chance_someone_inf")%>%
-    mutate(event_size = event_size[3])%>%rename(
-        `No mitigation` = inf_no_mitig_big,
-        `Rapid test morning of` = inf_testing_no_vax_big,
-        `100% vaccinated` = inf_fully_vax_no_test_big,
-        `100% vax & rapid test` = inf_fully_vax_and_test_big,
+    pivot_wider(names_from = "mitigation", values_from = c( "pct_chance_someone_inf", "chance_someone_inf"))%>%
+   rename(
+        `No mitigation` = pct_chance_someone_inf_inf_no_mitig_big,
+        `Rapid test morning of` = pct_chance_someone_inf_inf_testing_no_vax_big,
+        `100% vaccinated` = pct_chance_someone_inf_inf_fully_vax_no_test_big,
+        `100% vax & rapid test` = pct_chance_someone_inf_inf_fully_vax_and_test_big,
         `7-day cases per 100k` = cases_last_7_days_per_100k
     )
 
 
-
-
+# Rename back to original and pivot logner
+county_risk_clean<-rbind(county_risk_small_clean, county_risk_med_clean)
+county_risk_clean<-rbind(county_risk_clean, county_risk_big_clean)
+county_risk_long<-county_risk_clean%>%rename(
+    inf_no_mitig = `No mitigation`,
+    inf_testing_no_vax = `Rapid test morning of`,
+    inf_fully_vax_no_test= `100% vaccinated`,
+    inf_fully_vax_and_test = `100% vax & rapid test`,
+    cases_last_7_days_per_100k = `7-day cases per 100k`)%>%
+pivot_longer(
+    cols = starts_with("inf_"),
+    names_to = "mitigation",
+    names_prefix = "inf_", 
+    values_to = "chance_someone_inf",
+    values_drop_na = TRUE
+)
 
 # Write data files 
 write.csv(county_risk, '../out/county_risk.csv')
 write.csv(county_risk_small_clean, '../out/county_risk_small.csv')
 write.csv(county_risk_med_clean, '../out/county_risk_med.csv')
 write.csv(county_risk_big_clean, '../out/county_risk_big.csv') 
+write.csv(county_risk_long, '../out/county_risk_long.csv')
