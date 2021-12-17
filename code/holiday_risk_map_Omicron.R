@@ -15,7 +15,7 @@ library(tidyverse)
 library(readxl)
 library(lubridate)
 
-#lint("holiday_risk_map.R")
+
 
 # file paths
 NYT_CASE_BY_COUNTY_DAY <- url("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties-recent.csv")
@@ -36,9 +36,9 @@ state_regions<-read_csv(STATES_BY_REGION)
 # ----- Set parameters----------------------------------------------------
 DUR_INF<- 7 
 yesterday<- lubridate::today('EST')- days(1) # look at reported cases since yesterday
-reporting_rate<- 1/4 # https://www.cdc.gov/coronavirus/2019-ncov/cases-updates/burden.html
+reporting_rate<- 1/4.7 # https://www.cdc.gov/coronavirus/2019-ncov/cases-updates/burden.html
 test_sens <-0.88 # https://pubmed.ncbi.nlm.nih.gov/33971580/
-VE_inf<- 0.53 # https://www.cdc.gov/mmwr/volumes/70/wr/mm7034e3.htm
+VE_inf<- 0.33 # https://www.cdc.gov/mmwr/volumes/70/wr/mm7034e3.htm
 event_size<-c(10,20,30)
 event_size<-sort(event_size)
 prop_vax_event<-1
@@ -164,9 +164,9 @@ county_risk_big_clean<-county_risk_big%>%
 
 #-----Write data files for maps-----------------------------------------
 write.csv(county_risk, '../out/county_risk.csv')
-write.csv(county_risk_small_clean, '../out/county_risk_small.csv') # Flourish 1
-write.csv(county_risk_med_clean, '../out/county_risk_med.csv') # Flourish 2
-write.csv(county_risk_big_clean, '../out/county_risk_big.csv')  # Flourish 3
+write.csv(county_risk_small_clean, '../out/county_risk_small_Omicron.csv') # Flourish 1
+write.csv(county_risk_med_clean, '../out/county_risk_med_Omicron.csv') # Flourish 2
+write.csv(county_risk_big_clean, '../out/county_risk_big_Omicron.csv')  # Flourish 3
 
 
 
@@ -191,7 +191,7 @@ region_risk<-county_risk%>%mutate(
 
 
 
-# ----- Make a bar chart df for Flourish
+# ----- Make a bar chart df for Flourish--------------------------------
 for (i in 1:length(event_size)){
     event_sizes<-rep(event_size[i], nrow(region_risk))
     df<-region_risk%>%mutate(
@@ -213,9 +213,10 @@ region_df<-region_df%>%rename(`Same vax % as county` = risk_inf_no_mitig,
                               `Rapid test right before` = risk_inf_testing_no_vax,
                               `100% vaccinated` = risk_inf_fully_vax_no_test,
                               `100% vax & rapid test` = risk_inf_fully_vax_and_test)
-write.csv(region_df, '../out/region_bar_chart.csv')
+region_df<-region_df%>%arrange(desc(region_cases_last_7_days_per_100k))
+write.csv(region_df, '../out/region_bar_chart_Omicron.csv')
 
-# Make a line plot dataframe for Flourish 
+#------  Make a line plot dataframe for Flourish -----------------------------------
 event_size_vec<-seq(from = 1, to = 50, by = 1)
 for (i in 1:length(event_size_vec)){
     event_sizes<-rep(event_size_vec[i], nrow(region_risk))
@@ -238,46 +239,11 @@ region_event_size_df<-region_event_size_df%>%rename(`Same vax % as county` = ris
                               `Rapid test right before` = risk_inf_testing_no_vax,
                               `100% vaccinated` = risk_inf_fully_vax_no_test,
                               `100% vax & rapid test` = risk_inf_fully_vax_and_test)
-write.csv(region_event_size_df, '../out/region_line_plot.csv')
+region_event_size_df$Region<-factor(region_event_size_df$Region, ordered = TRUE, stringr::str_wrap(c(
+    "Northeast", "Midwest", "South", "West")))
+region_event_size_df<-region_event_size_df%>%arrange(desc(region_cases_last_7_days_per_100k))
+write.csv(region_event_size_df, '../out/region_line_plot_Omicron.csv')
 
 
 
-#---- Extra stuff-------------------------------------------------------------------------
 
-
-# Select an example county for Flourish
-example_county_risk<-county_risk_long%>%filter(county_state_formatted == "Union, New Jersey")
-#find_df$archetype_clean<-factor(find_df$archetype_clean, ordered = TRUE, stringr::str_wrap(c("Test", "Connect", "Leverage", "Strengthen")))
-example_county_risk$mitigation<-factor(example_county_risk$mitigation, ordered = TRUE, stringr::str_wrap(c(
-    "fully_vax_and_test", "testing_no_vax", "fully_vax_no_test", "no_mitig")))
-
-# Make dataframe for Flourish
-example_county_risk_wide<-example_county_risk%>%select(
-    event_size, mitigation, chance_someone_inf)%>%
-    pivot_wider(names_from = mitigation, values_from = chance_someone_inf)%>%
-    rename(`Same vax % as county` = no_mitig,
-           `Rapid test right before` = testing_no_vax,
-           `100% vaccinated` = fully_vax_no_test,
-           `100% vax & rapid test` = fully_vax_and_test)%>%
-    select(event_size, `Same vax % as county`, `100% vaccinated`, `Rapid test right before`, `100% vax & rapid test`)
-write.csv(example_county_risk_wide, '../out/example_bar_chart.csv') # Flourish bar chart
-
-
-# For this county, vary event size and find probability someone infected 
-event_sizes<-seq(from = 1, to = 50, by = 1)
-prev = rep(example_county_risk$prev[1], length(event_sizes))
-m_v = rep(example_county_risk$m_v[1], length(event_sizes))
-m_test = rep(example_county_risk$m_test[1], length(event_sizes))
-df<-data.frame(event_sizes, prev, m_v, m_test)
-df<-df%>%mutate(
-    risk_inf_no_mitig = calc_risk_inf_at_event(prev, event_sizes),
-    risk_inf_testing_no_vax = calc_risk_inf_at_event(m_test*prev, event_sizes),
-    risk_inf_fully_vax_no_test = calc_risk_inf_at_event(m_v*prev, event_sizes),
-    risk_inf_fully_vax_and_test= calc_risk_inf_at_event(m_test*m_v*prev, event_sizes)
-)%>%rename(
-    `Same vax % as county` = risk_inf_no_mitig,
-    `Rapid test right before` = risk_inf_testing_no_vax,
-    `100% vaccinated` = risk_inf_fully_vax_no_test,
-     `100% vax & rapid test` = risk_inf_fully_vax_and_test)
-
-write.csv(df, '../out/example_line_plot.csv') # Flourish bar chart
