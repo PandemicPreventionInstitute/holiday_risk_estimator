@@ -37,7 +37,7 @@ state_regions<-read_csv(STATES_BY_REGION)
 DUR_INF<- 7 
 yesterday<- lubridate::today('EST')- days(1) # look at reported cases since yesterday
 reporting_rate<- 1/4 # https://www.cdc.gov/coronavirus/2019-ncov/cases-updates/burden.html
-test_sens <-0.88 # https://pubmed.ncbi.nlm.nih.gov/33971580/
+test_sens <-0.786 # https://www.cdc.gov/mmwr/volumes/70/wr/mm7003e3.htm, https://www.medrxiv.org/content/10.1101/2020.10.30.20223198v1.full.pdf
 VE_inf<- 0.53 # https://www.cdc.gov/mmwr/volumes/70/wr/mm7034e3.htm
 event_size<-c(10,20,30)
 event_size<-sort(event_size)
@@ -62,13 +62,18 @@ county_cases$county_fips[county_cases$county == "New York City"]<-36061
 # vax data
 county_vax<-vax_rate_by_county_t%>%filter(CASE_TYPE == "Complete Coverage")%>%
     group_by(COUNTY)%>%filter(DATE == max(DATE))%>%
-    mutate(vax_rate = CASES/100)%>%select(COUNTY, vax_rate)
+    rename(pop = POPN)%>%
+    mutate(vax_rate = CASES/100)%>%select(COUNTY, pop,vax_rate)
+
+# Replace those with no cases with NA
+county_cases$sum_cases_7_days[county_cases$sum_cases_7_days ==0]<-NA
+counties_w_no_data<-county_cases[county_cases$sum_cases_7_days ==0 | is.na(county_cases$sum_cases_7_days),]
 
 
 
 
 # Calculate the effect of vaccination and  day of testing on 
-county_risk<-county_cases%>%left_join(county_pops, by = "county_state_formatted")%>%
+county_risk<-county_cases%>%
     left_join(county_vax, by = c("county_fips" = "COUNTY"))%>%
     left_join(state_regions, by = c("state" = "State"))%>%
     mutate(cases_last_7_days_per_100k=round((sum_cases_7_days/pop)*100000,0),
@@ -105,8 +110,13 @@ county_risk_long<-county_risk%>%pivot_longer(
     values_to = "chance_someone_inf",
     values_drop_na = TRUE
 )
-# add % to all risks
+
+# Add % to all risks
 county_risk_long$pct_chance_someone_inf<-paste0(county_risk_long$chance_someone_inf, ' %')
+
+# Add note to for counties not reporting data 
+county_risk_long$pct_chance_someone_inf[is.na(county_risk_long$sum_cases_7_days)]<- 'Insufficient case data'
+county_risk_long$cases_last_7_days_per_100k[is.na(county_risk_long$sum_cases_7_days)]<-'No reported cases'
 
 #------ Make 3 separate data frames for each event size (so column names can be same)---------
 # SMALL
@@ -173,14 +183,18 @@ write.csv(county_risk_big_clean, '../out/county_risk_big_Delta.csv')  # Flourish
 
 
 #------Summarise by region---------------------------------------------
+# Exclude counties not reporting cases from regional sums
+county_risk$pop[is.na(county_risk$sum_cases_7_days)]<-NA 
+
+
 region_risk<-county_risk%>%mutate(
     n_vax = vax_rate*pop)%>%
     group_by(Region)%>%
     summarise(
-        region_pop = sum(pop),
-        region_cases_last_7_days =sum(sum_cases_7_days),
-        region_cases_last_7_days_per_100k = round(100000*sum(sum_cases_7_days)/sum(pop),0),
-        region_vax_rate = sum(n_vax)/sum(pop)
+        region_pop = sum(pop, na.rm = TRUE),
+        region_cases_last_7_days =sum(sum_cases_7_days, na.rm = TRUE),
+        region_cases_last_7_days_per_100k = round(100000*sum(sum_cases_7_days, na.rm = TRUE)/sum(pop, na.rm = TRUE),0),
+        region_vax_rate = sum(n_vax, na.rm = TRUE)/sum(pop, na.rm = TRUE)
     )%>%drop_na(Region)%>%
     mutate(
         prev_per_100k = (1/reporting_rate)*region_cases_last_7_days_per_100k,
