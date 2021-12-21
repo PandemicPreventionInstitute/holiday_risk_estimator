@@ -20,13 +20,13 @@ library(lubridate)
 # file paths
 NYT_CASE_BY_COUNTY_DAY <- url("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties-recent.csv")
 VAX_RATES_BY_COUNTY<- url("https://raw.githubusercontent.com/bansallab/vaccinetracking/main/vacc_data/data_county_current.csv")
-COUNTY_POPULATION_PATH<-'../data/county_pops.csv'
+#COUNTY_POPULATION_PATH<-'../data/county_pops.csv'
 STATES_BY_REGION<- url("https://raw.githubusercontent.com/cphalpert/census-regions/master/us%20census%20bureau%20regions%20and%20divisions.csv")
 SHAPEFILE_PATH<-'../data/county_shape_file.txt'
 
 # read files
 cases_by_county_t <- read_csv(NYT_CASE_BY_COUNTY_DAY)
-county_pops<-read_csv(COUNTY_POPULATION_PATH)
+#county_pops<-read_csv(COUNTY_POPULATION_PATH)
 vax_rate_by_county_t<-read_csv(VAX_RATES_BY_COUNTY)
 state_regions<-read_csv(STATES_BY_REGION)
 
@@ -173,10 +173,10 @@ county_risk_big_clean<-county_risk_big%>%
     )
 
 #-----Write data files for maps-----------------------------------------
-write.csv(county_risk, '../out/county_risk.csv')
-write.csv(county_risk_small_clean, '../out/county_risk_small_Delta.csv') # Flourish 1
-write.csv(county_risk_med_clean, '../out/county_risk_med_Delta.csv') # Flourish 2
-write.csv(county_risk_big_clean, '../out/county_risk_big_Delta.csv')  # Flourish 3
+#write.csv(county_risk, '../out/county_risk.csv')
+#write.csv(county_risk_small_clean, '../out/county_risk_small_Delta.csv') # Flourish 1
+#write.csv(county_risk_med_clean, '../out/county_risk_med_Delta.csv') # Flourish 2
+#write.csv(county_risk_big_clean, '../out/county_risk_big_Delta.csv')  # Flourish 3
 
 
 
@@ -230,7 +230,10 @@ region_df<-region_df%>%rename(`Same vax % as county` = risk_inf_no_mitig,
 region_df$Region<-factor(region_df$Region, ordered = TRUE, stringr::str_wrap(c(
     "Northeast", "Midwest", "South", "West")))
 region_df<-region_df%>%arrange(desc(region_cases_last_7_days_per_100k))
-write.csv(region_df, '../out/region_bar_chart_Delta.csv')
+#local
+#write.csv(region_df, '../out/region_bar_chart_Delta.csv')
+#Domino
+write.csv(region_df, '/mnt/out/region_bar_chart_Delta.csv')
 
 #------  Make a line plot dataframe for Flourish -----------------------------------
 event_size_vec<-seq(from = 1, to = 50, by = 1)
@@ -256,7 +259,10 @@ region_event_size_df<-region_event_size_df%>%rename(`Same vax % as county` = ris
                               `100% vaccinated` = risk_inf_fully_vax_no_test,
                               `100% vax & rapid test` = risk_inf_fully_vax_and_test)
 region_event_size_df<-region_event_size_df%>%arrange(desc(region_cases_last_7_days_per_100k))
-write.csv(region_event_size_df, '../out/region_line_plot_Delta.csv')
+# local
+#write.csv(region_event_size_df, '../out/region_line_plot_Delta.csv')
+# Domino
+write.csv(region_event_size_df, '/mnt/out/region_line_plot_Delta.csv')
 
 
 
