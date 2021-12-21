@@ -26,7 +26,10 @@ NYT_CASE_BY_COUNTY_DAY <- url("https://raw.githubusercontent.com/nytimes/covid-1
 VAX_RATES_BY_COUNTY<- url("https://raw.githubusercontent.com/bansallab/vaccinetracking/main/vacc_data/data_county_current.csv")
 #COUNTY_POPULATION_PATH<-'../data/county_pops.csv'
 STATES_BY_REGION<- url("https://raw.githubusercontent.com/cphalpert/census-regions/master/us%20census%20bureau%20regions%20and%20divisions.csv")
-SHAPEFILE_PATH<-'../data/county_shape_file.txt'
+# local
+#SHAPEFILE_PATH<-'../data/county_shape_file.txt'
+# Domino
+SHAPEFILE_PATH<-'/mnt/data/county_shape_file.txt'
 
 # read files
 cases_by_county_t <- read_csv(NYT_CASE_BY_COUNTY_DAY)
