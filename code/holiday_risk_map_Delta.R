@@ -9,10 +9,10 @@
 
 # ----- Load in libraries and datasets ---------------------------------
 rm(list = ls())
-#install.packages("lubridate", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
-#install.packages("readxl", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
-#install.packages("styler", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
-#install.packages("tidyverse", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
+install.packages("lubridate", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
+install.packages("readxl", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
+install.packages("styler", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
+install.packages("tidyverse", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
 #library(lintr)
 library(styler)
 library(tidyverse)
