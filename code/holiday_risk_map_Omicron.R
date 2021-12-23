@@ -66,6 +66,11 @@ county_cases<-cases_by_county_t%>%filter(date>=(yesterday-DUR_INF-1) & date<=yes
 county_cases['county_state_formatted']<-paste0(county_cases$county, ", ",county_cases$state)
 county_cases$county_fips[county_cases$county == "New York City"]<-36061
 
+county_cases_2<-cases_by_county_t%>%filter(date>=(yesterday-DUR_INF-1) & date<=yesterday)%>%
+    mutate(county_fips = as.character(fips))%>%
+    group_by(county_fips, county, state)%>%
+    summarise(sum_cases_7_days = max(cases) - min(cases)) 
+
 # Replace 0s with NA
 county_cases$sum_cases_7_days[county_cases$sum_cases_7_days ==0]<-NA
 
@@ -143,6 +148,8 @@ county_risk_small_clean<-county_risk_small%>%
         chance_someone_inf_fully_vax_no_test = chance_someone_inf_inf_fully_vax_no_test_small,
         chance_someone_inf_fully_vax_and_test = chance_someone_inf_inf_fully_vax_and_test_small
         
+    )%>%mutate(
+        `Updated` = paste0(substr(lubridate::now('EST'), 1, 16), ' EST')
     )
 # Check that missing data is being noted in correct column
 counties_w_no_data<-county_risk_small_clean[county_risk_small_clean$sum_cases_7_days ==0 | is.na(county_risk_small_clean$sum_cases_7_days),]
@@ -163,6 +170,8 @@ county_risk_med_clean<-county_risk_med%>%
         chance_someone_inf_testing_no_vax = chance_someone_inf_inf_testing_no_vax_med,
         chance_someone_inf_fully_vax_no_test = chance_someone_inf_inf_fully_vax_no_test_med,
         chance_someone_inf_fully_vax_and_test = chance_someone_inf_inf_fully_vax_and_test_med
+    )%>%mutate(
+        `Updated` = paste0(substr(lubridate::now('EST'), 1, 16), ' EST')
     )
 
 #BIG
@@ -180,6 +189,8 @@ county_risk_big_clean<-county_risk_big%>%
         chance_someone_inf_testing_no_vax = chance_someone_inf_inf_testing_no_vax_big,
         chance_someone_inf_fully_vax_no_test = chance_someone_inf_inf_fully_vax_no_test_big,
         chance_someone_inf_fully_vax_and_test = chance_someone_inf_inf_fully_vax_and_test_big
+    )%>%mutate(
+        `Updated` = paste0(substr(lubridate::now('EST'), 1, 16), ' EST')
     )
 
 #-----Write data files for maps-----------------------------------------

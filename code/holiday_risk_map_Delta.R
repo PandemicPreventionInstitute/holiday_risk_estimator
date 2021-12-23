@@ -143,6 +143,8 @@ county_risk_small_clean<-county_risk_small%>%
         chance_someone_inf_fully_vax_no_test = chance_someone_inf_inf_fully_vax_no_test_small,
         chance_someone_inf_fully_vax_and_test = chance_someone_inf_inf_fully_vax_and_test_small
         
+    )%>%mutate(
+        `Updated` = paste0(substr(lubridate::now('EST'), 1, 16), ' EST')
     )
 
 #MEDIUM
@@ -160,6 +162,8 @@ county_risk_med_clean<-county_risk_med%>%
         chance_someone_inf_testing_no_vax = chance_someone_inf_inf_testing_no_vax_med,
         chance_someone_inf_fully_vax_no_test = chance_someone_inf_inf_fully_vax_no_test_med,
         chance_someone_inf_fully_vax_and_test = chance_someone_inf_inf_fully_vax_and_test_med
+    )%>%mutate(
+        `Updated` = paste0(substr(lubridate::now('EST'), 1, 16), ' EST')
     )
 
 #BIG
@@ -177,14 +181,15 @@ county_risk_big_clean<-county_risk_big%>%
         chance_someone_inf_testing_no_vax = chance_someone_inf_inf_testing_no_vax_big,
         chance_someone_inf_fully_vax_no_test = chance_someone_inf_inf_fully_vax_no_test_big,
         chance_someone_inf_fully_vax_and_test = chance_someone_inf_inf_fully_vax_and_test_big
+    )%>%mutate(
+        `Updated` = paste0(substr(lubridate::now('EST'), 1, 16), ' EST')
     )
 
 #-----Write data files for maps-----------------------------------------
-#write.csv(county_risk, '../out/county_risk.csv')
+# local paths
 #write.csv(county_risk_small_clean, '../out/county_risk_small_Delta.csv') # Flourish 1
 #write.csv(county_risk_med_clean, '../out/county_risk_med_Delta.csv') # Flourish 2
 #write.csv(county_risk_big_clean, '../out/county_risk_big_Delta.csv')  # Flourish 3
-
 
 
 
