@@ -59,7 +59,7 @@ calc_risk_inf_at_event <- function(p_I, n) {
 
 # ------ Summarise daily data to county-level ---------------------------
 #case data
-county_cases<-cases_by_county_t%>%filter(date>=(yesterday-(DUR_INF-1)) & date<=yesterday)%>%
+county_cases<-cases_by_county_t%>%filter(date>=(yesterday-DUR_INF) & date<=yesterday)%>%
     mutate(county_fips = as.character(fips))%>%
     group_by(county_fips, county, state)%>%
     summarise(sum_cases_7_days = max(cases) - min(cases)) 
