@@ -59,12 +59,15 @@ calc_risk_inf_at_event <- function(p_I, n) {
 
 # ------ Summarise daily data to county-level ---------------------------
 #case data
-county_cases<-cases_by_county_t%>%filter(date>=(yesterday-DUR_INF-1) & date<=yesterday)%>%
+county_cases<-cases_by_county_t%>%filter(date>(yesterday-(DUR_INF-1)) & date<=yesterday)%>%
     mutate(county_fips = as.character(fips))%>%
     group_by(county_fips, county, state)%>%
     summarise(sum_cases_7_days = max(cases) - min(cases)) 
 county_cases['county_state_formatted']<-paste0(county_cases$county, ", ",county_cases$state)
 county_cases$county_fips[county_cases$county == "New York City"]<-36061
+
+#county_cases_FL<-county_cases[county_cases$state == "Florida",]
+#FL_cases = sum(county_cases_FL$sum_cases_7_days, na.rm = TRUE)
 
 # vax data
 county_vax<-vax_rate_by_county_t%>%filter(CASE_TYPE == "Complete Coverage")%>%
