@@ -59,10 +59,12 @@ calc_risk_inf_at_event <- function(p_I, n) {
 
 # ------ Summarise daily data to county-level ---------------------------
 #case data
-county_cases<-cases_by_county_t%>%filter(date>=(yesterday-DUR_INF) & date<=yesterday)%>%
+county_cases<-cases_by_county_t%>%filter(date>=(yesterday-DUR_INF) & date<=yesterday)%>% # 8 days of cum cases to get 7 days new cases
     mutate(county_fips = as.character(fips))%>%
     group_by(county_fips, county, state)%>%
-    summarise(sum_cases_7_days = max(cases) - min(cases)) 
+    summarise(sum_cases_7_days = max(cases) - min(cases),
+              last_updated = which.max(cases), # takes most recent update
+              date_updated = date[last_updated]) 
 county_cases['county_state_formatted']<-paste0(county_cases$county, ", ",county_cases$state)
 county_cases$county_fips[county_cases$county == "New York City"]<-36061
 
@@ -109,7 +111,7 @@ county_risk<-county_cases%>%
 
 # Load in shapefile and join to it
 shapefile <- read_delim(SHAPEFILE_PATH, delim = "\t") %>%select(geometry, FIPS)
-county_risk<-left_join(shapefile, county_risk, by = c("FIPS" = "county_fips"))
+county_risk<-left_join(shapefile, county_risk, by = c("FIPS" = "county_fips"))%>%drop_na(county_state_formatted)
 
 # Clean the dataframe for Flourish
 county_risk_long<-county_risk%>%pivot_longer(
@@ -143,10 +145,10 @@ county_risk_small_clean<-county_risk_small%>%
         chance_someone_inf_no_mitig = chance_someone_inf_inf_no_mitig_small,
         chance_someone_inf_testing_no_vax = chance_someone_inf_inf_testing_no_vax_small,
         chance_someone_inf_fully_vax_no_test = chance_someone_inf_inf_fully_vax_no_test_small,
-        chance_someone_inf_fully_vax_and_test = chance_someone_inf_inf_fully_vax_and_test_small
-        
+        chance_someone_inf_fully_vax_and_test = chance_someone_inf_inf_fully_vax_and_test_small,
+        `County data updated` = date_updated
     )%>%mutate(
-        `Updated` = paste0(substr(lubridate::now('EST'), 1, 16), ' EST')
+        `Data pulled` =substr(lubridate::now('EST'), 1, 10)
     )
 
 #MEDIUM
@@ -163,9 +165,10 @@ county_risk_med_clean<-county_risk_med%>%
         chance_someone_inf_no_mitig = chance_someone_inf_inf_no_mitig_med,
         chance_someone_inf_testing_no_vax = chance_someone_inf_inf_testing_no_vax_med,
         chance_someone_inf_fully_vax_no_test = chance_someone_inf_inf_fully_vax_no_test_med,
-        chance_someone_inf_fully_vax_and_test = chance_someone_inf_inf_fully_vax_and_test_med
+        chance_someone_inf_fully_vax_and_test = chance_someone_inf_inf_fully_vax_and_test_med,
+        `County data updated` = date_updated
     )%>%mutate(
-        `Updated` = paste0(substr(lubridate::now('EST'), 1, 16), ' EST')
+        `Data pulled` =substr(lubridate::now('EST'), 1, 10)
     )
 
 #BIG
@@ -182,9 +185,10 @@ county_risk_big_clean<-county_risk_big%>%
         chance_someone_inf_no_mitig = chance_someone_inf_inf_no_mitig_big,
         chance_someone_inf_testing_no_vax = chance_someone_inf_inf_testing_no_vax_big,
         chance_someone_inf_fully_vax_no_test = chance_someone_inf_inf_fully_vax_no_test_big,
-        chance_someone_inf_fully_vax_and_test = chance_someone_inf_inf_fully_vax_and_test_big
+        chance_someone_inf_fully_vax_and_test = chance_someone_inf_inf_fully_vax_and_test_big,
+        `County data updated` = date_updated
     )%>%mutate(
-        `Updated` = paste0(substr(lubridate::now('EST'), 1, 16), ' EST')
+        `Data pulled` =substr(lubridate::now('EST'), 1, 10)
     )
 
 #-----Write data files for maps-----------------------------------------
