@@ -58,13 +58,25 @@ calc_risk_inf_at_event <- function(p_I, n) {
 }
 
 # ------ Summarise daily data to county-level ---------------------------
-#case data
-county_cases<-cases_by_county_t%>%filter(date>=(yesterday-DUR_INF) & date<=yesterday)%>% # 8 days of cum cases to get 7 days new cases
-    mutate(county_fips = as.character(fips))%>%
+# case data Using the last 7 days from yesterday, ignoring reporting gaps
+# county_cases<-cases_by_county_t%>%filter(date>=(yesterday-DUR_INF) & date<=yesterday)%>% # 8 days of cum cases to get 7 days new cases
+#     mutate(county_fips = as.character(fips))%>%
+#     group_by(county_fips, county, state)%>%
+#     summarise(sum_cases_7_days = max(cases) - min(cases),
+#               last_updated = which.max(cases), # takes most recent update
+#               date_updated = date[last_updated]) 
+
+# case data starting from the last day that the county reported data 
+county_cases<-cases_by_county_t%>% mutate(county_fips = as.character(fips))%>%
+    group_by(county_fips, county, state)%>%
+    mutate(last_updated = which.max(cases), # For each county, find the most recent date case data was updated
+          date_updated = date[last_updated])%>%ungroup()%>%
+    filter(date>=(date_updated -DUR_INF) & date<=date_updated)%>%
     group_by(county_fips, county, state)%>%
     summarise(sum_cases_7_days = max(cases) - min(cases),
-              last_updated = which.max(cases), # takes most recent update
-              date_updated = date[last_updated]) 
+              last_updated = max(last_updated),
+              date_updated = max(date_updated))
+
 county_cases['county_state_formatted']<-paste0(county_cases$county, ", ",county_cases$state)
 county_cases$county_fips[county_cases$county == "New York City"]<-36061
 
@@ -76,8 +88,12 @@ county_vax<-vax_rate_by_county_t%>%filter(CASE_TYPE == "Complete Coverage")%>%
     rename(pop = POPN)%>%
     mutate(vax_rate = CASES/100)%>%select(COUNTY, pop,vax_rate)
 
-# Replace those with no cases with NA
-county_cases$sum_cases_7_days[county_cases$sum_cases_7_days ==0]<-NA
+# Replace those with no cases with NA if using first method
+#county_cases$sum_cases_7_days[county_cases$sum_cases_7_days ==0]<-NA
+#counties_w_no_data<-county_cases[county_cases$sum_cases_7_days ==0 | is.na(county_cases$sum_cases_7_days),]
+
+# If date update is more than 7 days ago
+county_cases$sum_cases_7_days[county_cases$date_updated<=yesterday-7]<-NA
 counties_w_no_data<-county_cases[county_cases$sum_cases_7_days ==0 | is.na(county_cases$sum_cases_7_days),]
 
 
