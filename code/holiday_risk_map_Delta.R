@@ -127,7 +127,7 @@ county_risk<-county_cases%>%
     drop_na(county_fips)
 
 # Write unit test for missing data 
-stopifnot('More than 20 counties are missing data'= sum(is.na(county_risk$risk_inf_no_mitig_small))<20)
+stopifnot('More than 200 counties are missing data'= sum(is.na(county_risk$risk_inf_no_mitig_small))<200)
 
 
 # Load in shapefile and join to it
