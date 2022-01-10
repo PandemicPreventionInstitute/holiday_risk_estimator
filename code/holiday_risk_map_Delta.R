@@ -2,17 +2,21 @@
 
 # Date originated: 12-13-2021
 
-
-
+rm(list = ls())
+global_var = Sys.getenv("USE_CASE")
+if(global_var == ""){
+    USE_CASE<-'local'
+}
 
 
 
 # ----- Load in libraries and datasets ---------------------------------
-rm(list = ls())
+if(USE_CASE == 'domino'){
 install.packages("lubridate", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
 install.packages("readxl", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
 install.packages("styler", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
 install.packages("tidyverse", dependencies = TRUE, repos = 'http://cran.us.r-project.org')
+}
 #library(lintr)
 library(styler)
 library(tidyverse)
@@ -24,21 +28,28 @@ library(lubridate)
 # file paths
 NYT_CASE_BY_COUNTY_DAY <- url("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties-recent.csv")
 VAX_RATES_BY_COUNTY<- url("https://raw.githubusercontent.com/bansallab/vaccinetracking/main/vacc_data/data_county_current.csv")
-#COUNTY_POPULATION_PATH<-'../data/county_pops.csv'
 STATES_BY_REGION<- url("https://raw.githubusercontent.com/cphalpert/census-regions/master/us%20census%20bureau%20regions%20and%20divisions.csv")
-#local
-#SHAPEFILE_PATH<-'../data/county_shape_file.txt'
-#Domino 
-SHAPEFILE_PATH<-'/mnt/data/county_shape_file.txt'
+
+# local
+if (USE_CASE == 'local'){
+    SHAPEFILE_PATH<-'../data/county_shape_file.txt'
+    COUNTY_POPS<-'../data/county_pops.csv'
+}
+# Domino
+if (USE_CASE=='domino'){
+    SHAPEFILE_PATH<-'/mnt/data/county_shape_file.txt'
+    COUNTY_POPS<-'/mnt/data/county_pops.csv'
+}
+
 
 # read files
 cases_by_county_t <- read_csv(NYT_CASE_BY_COUNTY_DAY)
-#county_pops<-read_csv(COUNTY_POPULATION_PATH)
+county_pop<-read_csv(COUNTY_POPS)
+county_pop$pop <- as.numeric(gsub(",","",county_pop$pop))
 vax_rate_by_county_t<-read_csv(VAX_RATES_BY_COUNTY)
 state_regions<-read_csv(STATES_BY_REGION)
 
 
-# test
 
 # ----- Set parameters----------------------------------------------------
 DUR_INF<- 7 
@@ -58,13 +69,6 @@ calc_risk_inf_at_event <- function(p_I, n) {
 }
 
 # ------ Summarise daily data to county-level ---------------------------
-# case data Using the last 7 days from yesterday, ignoring reporting gaps
-# county_cases<-cases_by_county_t%>%filter(date>=(yesterday-DUR_INF) & date<=yesterday)%>% # 8 days of cum cases to get 7 days new cases
-#     mutate(county_fips = as.character(fips))%>%
-#     group_by(county_fips, county, state)%>%
-#     summarise(sum_cases_7_days = max(cases) - min(cases),
-#               last_updated = which.max(cases), # takes most recent update
-#               date_updated = date[last_updated]) 
 
 # case data starting from the last day that the county reported data 
 county_cases<-cases_by_county_t%>% mutate(county_fips = as.character(fips))%>%
@@ -84,13 +88,10 @@ county_cases$county_fips[county_cases$county == "New York City"]<-36061
 
 # vax data
 county_vax<-vax_rate_by_county_t%>%filter(CASE_TYPE == "Complete Coverage")%>%
-    group_by(COUNTY)%>%filter(DATE == max(DATE))%>%
+    group_by(COUNTY)%>%filter(DATE == max(DATE, na.rm = TRUE)| is.na(DATE))%>%
     rename(pop = POPN)%>%
-    mutate(vax_rate = CASES/100)%>%select(COUNTY, pop,vax_rate)
+    mutate(vax_rate = CASES/100)%>%select(COUNTY, vax_rate, GEOFLAG, pop)
 
-# Replace those with no cases with NA if using first method
-#county_cases$sum_cases_7_days[county_cases$sum_cases_7_days ==0]<-NA
-#counties_w_no_data<-county_cases[county_cases$sum_cases_7_days ==0 | is.na(county_cases$sum_cases_7_days),]
 
 # If date update is more than 7 days ago
 county_cases$sum_cases_7_days[county_cases$date_updated<=yesterday-7]<-NA
@@ -123,6 +124,8 @@ county_risk<-county_cases%>%
            )%>%
     drop_na(county_fips)
 
+# Write unit test for missing data 
+stopifnot('More than 20 counties are missing data'= sum(is.na(county_risk$risk_inf_no_mitig_small))<20)
 
 
 # Load in shapefile and join to it
@@ -162,9 +165,9 @@ county_risk_small_clean<-county_risk_small%>%
         chance_someone_inf_testing_no_vax = chance_someone_inf_inf_testing_no_vax_small,
         chance_someone_inf_fully_vax_no_test = chance_someone_inf_inf_fully_vax_no_test_small,
         chance_someone_inf_fully_vax_and_test = chance_someone_inf_inf_fully_vax_and_test_small,
-        `County data updated` = date_updated
+        `Data last reported` = date_updated
     )%>%mutate(
-        `Data pulled` =substr(lubridate::now('EST'), 1, 10)
+        `Data updated` =substr(lubridate::now('EST'), 1, 10)
     )
 
 #MEDIUM
@@ -182,9 +185,9 @@ county_risk_med_clean<-county_risk_med%>%
         chance_someone_inf_testing_no_vax = chance_someone_inf_inf_testing_no_vax_med,
         chance_someone_inf_fully_vax_no_test = chance_someone_inf_inf_fully_vax_no_test_med,
         chance_someone_inf_fully_vax_and_test = chance_someone_inf_inf_fully_vax_and_test_med,
-        `County data updated` = date_updated
+        `Data last reported` = date_updated
     )%>%mutate(
-        `Data pulled` =substr(lubridate::now('EST'), 1, 10)
+        `Data updated` =substr(lubridate::now('EST'), 1, 10)
     )
 
 #BIG
@@ -202,9 +205,9 @@ county_risk_big_clean<-county_risk_big%>%
         chance_someone_inf_testing_no_vax = chance_someone_inf_inf_testing_no_vax_big,
         chance_someone_inf_fully_vax_no_test = chance_someone_inf_inf_fully_vax_no_test_big,
         chance_someone_inf_fully_vax_and_test = chance_someone_inf_inf_fully_vax_and_test_big,
-        `County data updated` = date_updated
+        `Data last reported` = date_updated
     )%>%mutate(
-        `Data pulled` =substr(lubridate::now('EST'), 1, 10)
+        `Data updated` =substr(lubridate::now('EST'), 1, 10)
     )
 
 #-----Write data files for maps-----------------------------------------
@@ -265,9 +268,12 @@ region_df$Region<-factor(region_df$Region, ordered = TRUE, stringr::str_wrap(c(
     "Northeast", "Midwest", "South", "West")))
 region_df<-region_df%>%arrange(desc(region_cases_last_7_days_per_100k))
 #local
-#write.csv(region_df, '../out/region_bar_chart_Delta.csv')
-#Domino
+if (USE_CASE == 'local'){
+write.csv(region_df, '../out/region_bar_chart_Delta.csv')
+}
+if (USE_CASE == 'domino'){
 write.csv(region_df, '/mnt/out/region_bar_chart_Delta.csv')
+}
 
 #------  Make a line plot dataframe for Flourish -----------------------------------
 event_size_vec<-seq(from = 1, to = 50, by = 1)
@@ -294,9 +300,12 @@ region_event_size_df<-region_event_size_df%>%rename(`Same vax % as county` = ris
                               `100% vax & rapid test` = risk_inf_fully_vax_and_test)
 region_event_size_df<-region_event_size_df%>%arrange(desc(region_cases_last_7_days_per_100k))
 # local
-#write.csv(region_event_size_df, '../out/region_line_plot_Delta.csv')
-# Domino
+if (USE_CASE == 'local'){
+write.csv(region_event_size_df, '../out/region_line_plot_Delta.csv')
+}
+if (USE_CASE == 'domino'){
 write.csv(region_event_size_df, '/mnt/out/region_line_plot_Delta.csv')
+}
 
 
 
