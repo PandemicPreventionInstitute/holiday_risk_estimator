@@ -2,10 +2,11 @@
 
 # Date originated: 12-13-2021
 rm(list = ls())
-global_var = Sys.getenv("USE_CASE")
-if(global_var == ""){
-    USE_CASE<-'local'
-}
+# global_var = Sys.getenv("USE_CASE")
+# if(global_var == ""){
+#     USE_CASE<-'local'
+# }
+USE_CASE<-'domino'
 
 
 # test
