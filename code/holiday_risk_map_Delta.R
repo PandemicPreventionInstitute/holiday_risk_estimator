@@ -3,12 +3,12 @@
 # Date originated: 12-13-2021
 
 rm(list = ls())
-# global_var = Sys.getenv("USE_CASE")
-# if(global_var == ""){
-#     USE_CASE<-'local'
-# }
+USE_CASE = Sys.getenv("USE_CASE")
+if(USE_CASE == ""){
+    USE_CASE<-'local'
+}
 
-USE_CASE<-'domino'
+#USE_CASE<-'domino' # 'domino' or 'local'
 
 
 
