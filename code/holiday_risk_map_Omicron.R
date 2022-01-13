@@ -100,10 +100,15 @@ counties_w_no_data<-county_cases[county_cases$sum_cases_7_days ==0 | is.na(count
 
 
 # vax data
-county_vax<-vax_rate_by_county_t%>%filter(CASE_TYPE == "Complete Coverage")%>%
-    group_by(COUNTY)%>%filter(DATE == max(DATE, na.rm = TRUE) | is.na(DATE))%>%
+county_vax<-vax_rate_by_county_t%>%mutate(day_week_year = paste0('1/',WEEK,'/',YEAR),
+                                          date_data = lubridate::parse_date_time(day_week_year, orders = "%u/%W/%Y", exact = T))%>%
+    filter(CASE_TYPE == "Complete Coverage")%>% 
+    group_by(COUNTY)%>%filter(date_data == max(date_data, na.rm = TRUE))%>%
     rename(pop = POPN)%>%
-    mutate(vax_rate = CASES/100)%>%select(COUNTY, vax_rate, GEOFLAG, pop)
+    mutate(vax_rate = CASES/100)%>%select(COUNTY, vax_rate, GEOFLAG, pop, date_data)
+
+stopifnot('Vaccination rate data is outdated'= sum(county_vax$date_data< as.Date("2021-12-01"))==0)
+
 
 
 
